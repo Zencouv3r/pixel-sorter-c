@@ -4,4 +4,4 @@ Work only with 32bit BMPs.
 support for different formats and platforms (maybe) will be added soon
 
 Example usage: 
-./sorter input.bmp -o output.bmp -s light -i threshold 6 220 -d l
+./sorter input.bmp -o output.bmp -s light -i threshold 6 220 -d left
