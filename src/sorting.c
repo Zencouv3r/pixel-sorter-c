@@ -1,5 +1,7 @@
+#include "alloc.h"
 #include <sorting.h>
 #include <pthread.h>
+#include <err.h>
 
 /* local function declaration */
 __attribute__((hot, always_inline)) static inline float hue (pixel p);
@@ -13,6 +15,7 @@ static int inv_hue_cmpr(const void *a, const void *b);
 static int inv_light_cmpr(const void *a, const void *b);
 
 void sort_chunk(pixel* buff, u32 width, u32 heigth, u8 dir, u8 ss, u32 lt, u32 ht);
+void sort_chunk_updown(pixel* buff, u32 width, u32 heigth, u8 dir, u8 ss, u32 lt, u32 ht);
 
 /* global function definition */
 void pixel_sort(BMP* restrict img, u8 dir, u8 ss, u32 lt, u32 ht) {
@@ -27,7 +30,10 @@ void pixel_sort(BMP* restrict img, u8 dir, u8 ss, u32 lt, u32 ht) {
   //           qsort((pixel)),
   //           &ids[i]
   //       );
-  sort_chunk(img->pixels, img->width, img->heigth, dir, ss, lt, ht);
+  if (dir == 'u' || dir == 'd')
+    sort_chunk_updown(img->pixels, img->width, img->heigth, dir, ss, lt, ht);
+  else
+    sort_chunk(img->pixels, img->width, img->heigth, dir, ss, lt, ht);
 }
 
 
@@ -58,7 +64,7 @@ static inline float hue (pixel p) {
   if (h < 0.0f) 
     h += 6.0f;
 
-  return h * 10;
+  return h * 60;
 }
 
 __attribute__((hot, always_inline)) static inline float light (pixel p) {
@@ -116,6 +122,9 @@ void sort_chunk(pixel* buff, u32 width, u32 heigth, u8 dir, u8 ss, u32 lt, u32 h
         cmpr_func = inv_light_cmpr;
       sst = light;
       break;
+    default:
+      err_terminate("Wrong sort style");
+      
     }
 
     for (u32 row = 0; row < heigth; ++row) {
@@ -137,5 +146,67 @@ void sort_chunk(pixel* buff, u32 width, u32 heigth, u8 dir, u8 ss, u32 lt, u32 h
       if (start >= 0)
         qsort(rptr + start, width - start, sizeof *rptr, cmpr_func);
     }
+}
+
+void sort_chunk_updown(pixel* buff, u32 width, u32 heigth, u8 dir, u8 ss, u32 lt, u32 ht)  {
+  int (*cmpr_func)(const void*, const void*);
+  float (*sst)(pixel p);
+  
+  switch(ss) {
+    case 'h':
+      if(dir == 'u')
+        cmpr_func = hue_cmpr;
+      else
+        cmpr_func = inv_hue_cmpr;
+      sst = hue;
+      break;
+    case 'l':
+      if(dir == 'd')
+        cmpr_func = light_cmpr;
+      else
+        cmpr_func = inv_light_cmpr;
+      sst = light;
+      break;
+    default:
+      err_terminate("Wrong sort style");
+  }
+
+  for (u32 col = 0; col < width; ++col) {
+    int start = -1;
+    pixel *col_ptr = memalloc(heigth * sizeof(pixel));
+
+    for (u32 row = 0; row < heigth; ++row) {
+      float m = sst(buff[row * width + col]);
+      int in = (m > lt && m < ht);
+
+      if (in && start < 0)
+        start = row;
+      
+      else if (!in && start >= 0) {
+        int len = row - start;
+        for (int k = 0; k < len; ++k)
+            col_ptr[k] = buff[(start + k) * width + col];
+
+        qsort(col_ptr, len, sizeof *col_ptr, cmpr_func);
+
+        for (int k = 0; k < len; ++k)
+            buff[(start + k) * width + col] = col_ptr[k];
+
+        start = -1;
+      }
+    }
+
+    if(start >= 0) {
+      int len = heigth - start;
+
+      for (int k = 0; k < len; ++k)
+        col_ptr[k] = buff[(start + k) * width + col];
+
+      qsort(col_ptr, len, sizeof *col_ptr, cmpr_func);
+
+      for (int k = 0; k < len; ++k)
+        buff[(start + k) * width + col] = col_ptr[k];
+    } 
+  }
 }
 

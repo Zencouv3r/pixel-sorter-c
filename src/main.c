@@ -16,7 +16,7 @@ static inline const char* validate_args(u8 sd, u8 ss, u8 is, u32 lt, u32 ht) {
   2. -o - output name
   3. -d - direction up/down/left/right
   4. -s - sorting style hue/light/saturation
-  5. -i - interval style none/threshold/random
+  5. -i - interval style none/threshold
 */
 
 int main(int argc, char *argv[])
@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     err_terminate("Usage: ./a.out <filename> <flags>:"
                   "-o <output file name>"
                   "-d <up/down/left/right> - direction"
-                  "-s <hue/light/saturation> - sorting style"
+                  "-s <hue/light> - sorting style"
                   "-i <none/threshold> <low threshold> <high_threshold> - interval style");
 
   const char* input_name = argv[1];
