@@ -200,9 +200,10 @@ void sort_chunk_updown(pixel* buff, u32 width, u32 heigth, u8 dir, u8 ss, u32 lt
       err_terminate("Wrong sort style");
   }
 
+  pixel *col_ptr = memalloc(heigth * sizeof(pixel));
+
   for (u32 col = 0; col < width; ++col) {
     int start = -1;
-    pixel *col_ptr = memalloc(heigth * sizeof(pixel));
 
     for (u32 row = 0; row < heigth; ++row) {
       float m = sst(buff[row * width + col]);
