@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <unistd.h>
 
 __attribute__((noreturn, cold))

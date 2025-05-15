@@ -1,7 +1,7 @@
 #include <stdlib.h>
-#include <err.h>
-#include <sorting.h>
 #include <string.h>
+#include "err.h"
+#include "sorting.h"
 
 static inline const char* validate_args(u8 sd, u8 ss, u8 is, u32 lt, u32 ht) {
   if (sd != 'u' && sd != 'd' && sd != 'l' && sd != 'r') return "wrong sort direction";

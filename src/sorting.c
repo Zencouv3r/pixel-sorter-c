@@ -1,12 +1,27 @@
-#include "alloc.h"
-#include <sorting.h>
+#include <unistd.h>
 #include <pthread.h>
-#include <err.h>
+#include "sorting.h"
+#include "alloc.h"
+#include "err.h"
+
+#define THREAD_COUNT 4
 
 /* local function declaration */
 __attribute__((hot, always_inline)) static inline float hue (pixel p);
 __attribute__((hot, always_inline)) static inline float light (pixel p);
 
+typedef struct {
+  pixel* buff;
+  u32   width;
+  u32  height;
+  u8      dir;
+  u8       ss;
+  u32      lt;
+  u32      ht;
+} sort_args;
+
+void* thread_sort(void* v_arg);
+void* thread_sort_updown(void* v_arg);
 
 static int hue_cmpr(const void *a, const void *b);
 static int light_cmpr(const void *a, const void *b);
@@ -17,23 +32,37 @@ static int inv_light_cmpr(const void *a, const void *b);
 void sort_chunk(pixel* buff, u32 width, u32 heigth, u8 dir, u8 ss, u32 lt, u32 ht);
 void sort_chunk_updown(pixel* buff, u32 width, u32 heigth, u8 dir, u8 ss, u32 lt, u32 ht);
 
+
 /* global function definition */
 void pixel_sort(BMP* restrict img, u8 dir, u8 ss, u32 lt, u32 ht) {
-  // u32 cores = sysconf(_SC_NPROCESSORS_ONLN);
-  // pthread_t threads[cores];
-  // int ids[cores];
-  // for (int i = 0; i < cores; i++) {
-  //       ids[i] = i + 1;
-  //       int rc = pthread_create(
-  //           &threads[i],
-  //           NULL,
-  //           qsort((pixel)),
-  //           &ids[i]
-  //       );
+  const u64 cores_count = dir == 'u' || dir == 'd' ? 1 : THREAD_COUNT;
+  pthread_t threads[cores_count];
+
+  sort_args* args[cores_count];
+
+  u32 start = 0;
+  for (u32 i = 0; i < cores_count; ++i) {
+    args[i] = memalloc(sizeof *args[i]);
+    args[i]->buff   = img->pixels + start * img->width;
+    args[i]->width  = img->width;
+    args[i]->height = img->heigth / cores_count;
+    args[i]->dir    = dir;
+    args[i]->ss     = ss;
+    args[i]->lt     = lt;
+    args[i]->ht     = ht;
+    start += img->heigth / cores_count;
+  }
+
   if (dir == 'u' || dir == 'd')
-    sort_chunk_updown(img->pixels, img->width, img->heigth, dir, ss, lt, ht);
+    for (u32 i = 0; i < cores_count; i++)
+      pthread_create(&threads[i], NULL, thread_sort_updown, args[i]);
   else
-    sort_chunk(img->pixels, img->width, img->heigth, dir, ss, lt, ht);
+    for (u32 i = 0; i < cores_count; i++)
+      pthread_create(&threads[i], NULL, thread_sort, args[i]);
+
+  for (u32 i = 0; i < cores_count; i++) {
+    pthread_join(threads[i], NULL);
+  }
 }
 
 
@@ -210,3 +239,26 @@ void sort_chunk_updown(pixel* buff, u32 width, u32 heigth, u8 dir, u8 ss, u32 lt
   }
 }
 
+void* thread_sort_updown(void* v_arg) {
+  sort_args* arg = (sort_args*)v_arg;
+  sort_chunk_updown(arg->buff,
+                   arg->width,
+                   arg->height,
+                   arg->dir,
+                   arg->ss,
+                   arg->lt,
+                   arg->ht);
+  return NULL;
+}
+
+void* thread_sort(void* v_arg) {
+  sort_args* arg = (sort_args*)v_arg;
+  sort_chunk(arg->buff,
+                   arg->width,
+                   arg->height,
+                   arg->dir,
+                   arg->ss,
+                   arg->lt,
+                   arg->ht);
+  return NULL;
+}

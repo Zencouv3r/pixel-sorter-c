@@ -1,6 +1,6 @@
-#include <bmp.h>
-#include <alloc.h>
 #include <stdio.h>
+#include "bmp.h"
+#include "alloc.h"
 
 /*local function declarations*/
 
